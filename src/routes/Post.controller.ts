@@ -118,12 +118,7 @@ const getPost = async (request: GetPostDto): Promise<ResponseDto> => {
     const username: string | undefined = request.headers.username;
     let following: Array<any> = [];
     if (username) {
-      const user: any = await db.findOne(
-        UserModel,
-        { username },
-        { password: 0 },
-        ["following"]
-      );
+      const user: any = await db.findOne(UserModel, { username }, {});
       if (user.following.length > 0) {
         user.following.map((data: User) => {
           following.push(data.username);
@@ -138,6 +133,26 @@ const getPost = async (request: GetPostDto): Promise<ResponseDto> => {
       {},
       {},
       { updatedAt: -1 },
+      [],
+      request.headers.pageNumber ? request.headers.pageNumber : 1,
+      request.headers.pageSize ? request.headers.pageSize : 10,
+      request.headers.limit ? request.headers.limit : 10
+    );
+    return { message: "Posts fetched", data: posts };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+};
+
+const getAllPosts = async (request: GetPostDto): Promise<ResponseDto> => {
+  try {
+    const posts = await db.findAll(
+      PostModel,
+      {},
+      {},
+      {},
+      { updatedAt: -1 },
+      ["userId"],
       request.headers.pageNumber ? request.headers.pageNumber : 1,
       request.headers.pageSize ? request.headers.pageSize : 10,
       request.headers.limit ? request.headers.limit : 10
@@ -151,6 +166,8 @@ const getPost = async (request: GetPostDto): Promise<ResponseDto> => {
 const createPost = async (request: CreatePostDto): Promise<ResponseDto> => {
   try {
     const postRef = uuidv4();
+    console.log(request.body);
+
     const postObj = {
       username: request.headers.username,
       userId: request.headers.userid,
@@ -164,6 +181,7 @@ const createPost = async (request: CreatePostDto): Promise<ResponseDto> => {
       location: request.body.location || "",
       active: true,
     };
+    console.log(postObj);
 
     const post = await db.create(PostModel, postObj, { new: true });
     return { message: "Post Created", data: post };
@@ -396,7 +414,7 @@ router.get(
   "/",
   [userMiddleware.loginStatus],
   async (request: GetPostDto, response: any) => {
-    const user: ResponseDto = await getPost(request);
+    const user: ResponseDto = await getAllPosts(request);
     response.send(user);
   }
 );
