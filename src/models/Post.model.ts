@@ -6,7 +6,7 @@ export interface Post extends Document {
   username: string;
   userId: Types.ObjectId;
   postRef: string;
-  image: string;
+  image?: Array<string>;
   title: string;
   description?: string;
   tags: Array<string>;
@@ -20,7 +20,7 @@ const schema = new Schema<Post>(
   {
     username: { type: String, required: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    image: { type: String, required: true },
+    image: [{ type: String, required: false }],
     title: { type: String, required: true },
     postRef: { type: String, required: true },
     description: { type: String, required: false, default: "" },

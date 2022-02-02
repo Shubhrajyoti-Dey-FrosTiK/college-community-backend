@@ -16,7 +16,7 @@ export class UserMiddleware {
       next();
     } else {
       response.send({
-        message: "You are not logged in",
+        error: "You are not logged in",
       });
     }
   }

@@ -39,13 +39,13 @@ interface GetPostDto {
 
 interface CreatePostDto {
   body: {
-    image: string;
+    image?: Array<string>;
     title: string;
     description?: string;
     tags?: Array<string>;
     likeCount: number;
-    people: Array<Types.ObjectId>;
-    location: string;
+    people?: Array<Types.ObjectId>;
+    location?: string;
   };
   headers: {
     username: string;
@@ -57,7 +57,7 @@ interface UpdatePostDto {
   body: {
     postId: Types.ObjectId;
     update: {
-      image?: string;
+      image?: Array<string>;
       title?: string;
       description?: string;
       tags?: Array<string>;
@@ -164,7 +164,6 @@ const createPost = async (request: CreatePostDto): Promise<ResponseDto> => {
       location: request.body.location || "",
       active: true,
     };
-    console.log(postObj);
 
     const post = await db.create(PostModel, postObj, { new: true });
     return { message: "Post Created", data: post };
@@ -263,7 +262,7 @@ const addLike = async (request: LikeDto): Promise<ResponseDto> => {
           postRef: post.postRef,
           username: request.headers.username,
           userImage: request.body.userImage || "",
-          creatorImage: post.image,
+          creatorImage: post.image ? post.image[0] : "",
           userId: request.headers.userid,
           type: ACTIVITY_CONSTANTS.LIKE_POST,
         },
