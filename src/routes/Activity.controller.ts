@@ -36,7 +36,7 @@ interface CreateUserDto {
     email: string;
     password: string;
     activity?: string;
-    image?: Buffer;
+    image?: string;
     followers?: string;
     following?: string;
     expiresIn?: string | number;
