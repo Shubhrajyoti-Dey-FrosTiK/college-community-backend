@@ -66,12 +66,14 @@ export class DatabaseService {
     fieldMap: IMongoRequiredFields = { _id: 0 },
     queryOptions: QueryOptions = {},
     sortOptions: object = {},
+    populateOptions: Array<string> = [],
     pageNumber: number = 1,
     pageSize: number = 10,
     limit: number = 100
   ): Promise<T[]> {
     return await model
       .find(inputQuery, fieldMap, queryOptions)
+      .populate(populateOptions)
       .sort(sortOptions)
       .skip(pageNumber > 0 ? (pageNumber - 1) * pageSize : 0)
       .limit(limit);
