@@ -37,6 +37,23 @@ interface GetPostDto {
   };
 }
 
+interface GetPostByIdDto {
+  headers: {
+    postid: Types.ObjectId;
+    userid: Types.ObjectId;
+    pagenumber?: number;
+    pagesize?: number;
+    limit?: number;
+  };
+}
+
+interface CheckIfLikedDto {
+  headers: {
+    postid: Types.ObjectId;
+    userid: Types.ObjectId;
+  };
+}
+
 interface CreatePostDto {
   body: {
     image?: Array<string>;
@@ -86,7 +103,6 @@ interface CreateCommentDto {
 interface LikeDto {
   body: {
     message?: string;
-    postId: Types.ObjectId;
     postRef: string;
     creatorImage?: string;
     userImage?: string;
@@ -95,7 +111,7 @@ interface LikeDto {
   headers: {
     username: string;
     userid: Types.ObjectId;
-    postid?: Types.ObjectId;
+    postid: Types.ObjectId;
     activityid?: Types.ObjectId;
   };
 }
@@ -113,32 +129,60 @@ interface UpdateActivityDto {
 
 /*-------- Methods --------*/
 
-const getPost = async (request: GetPostDto): Promise<ResponseDto> => {
+// const getPost = async (request: GetPostDto): Promise<ResponseDto> => {
+//   try {
+//     const username: string | undefined = request.headers.username;
+//     let following: Array<any> = [];
+//     if (username) {
+//       const user: any = await db.findOne(UserModel, { username }, {});
+//       if (user.following.length > 0) {
+//         user.following.map((data: User) => {
+//           following.push(data.username);
+//         });
+//       }
+//     }
+//     var searchOptions =
+//       following.length > 0 ? { username: { $in: following } } : {};
+//     const posts = db.findAll(
+//       PostModel,
+//       searchOptions,
+//       {},
+//       {},
+//       { updatedAt: -1 },
+//       [],
+//       request.headers.pageNumber ? request.headers.pageNumber : 1,
+//       request.headers.pageSize ? request.headers.pageSize : 10,
+//       request.headers.limit ? request.headers.limit : 10
+//     );
+//     return { message: "Posts fetched", data: posts };
+//   } catch (error: any) {
+//     return { error: error.message };
+//   }
+// };
+
+const getPostById = async (request: GetPostByIdDto): Promise<ResponseDto> => {
   try {
-    const username: string | undefined = request.headers.username;
-    let following: Array<any> = [];
-    if (username) {
-      const user: any = await db.findOne(UserModel, { username }, {});
-      if (user.following.length > 0) {
-        user.following.map((data: User) => {
-          following.push(data.username);
-        });
-      }
-    }
-    var searchOptions =
-      following.length > 0 ? { username: { $in: following } } : {};
-    const posts = db.findAll(
+    const post = await db.findOne(
       PostModel,
-      searchOptions,
+      { _id: request.headers.postid },
       {},
-      {},
-      { updatedAt: -1 },
-      [],
-      request.headers.pageNumber ? request.headers.pageNumber : 1,
-      request.headers.pageSize ? request.headers.pageSize : 10,
-      request.headers.limit ? request.headers.limit : 10
+      ["userId"]
     );
-    return { message: "Posts fetched", data: posts };
+    return { message: "Post fetched", data: post };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+};
+
+const checkIfLiked = async (request: CheckIfLikedDto): Promise<ResponseDto> => {
+  try {
+    const check = await db.findOne(ActivityModel, {
+      userId: request.headers.userid,
+      postId: request.headers.postid,
+      type: ACTIVITY_CONSTANTS.LIKE_POST,
+      active: true,
+    });
+    return { message: "Checked", data: check };
   } catch (error: any) {
     return { error: error.message };
   }
@@ -163,11 +207,34 @@ const getAllPosts = async (request: GetPostDto): Promise<ResponseDto> => {
   }
 };
 
+const getAllComments = async (
+  request: GetPostByIdDto
+): Promise<ResponseDto> => {
+  try {
+    const post = await db.findAll(
+      ActivityModel,
+      {
+        postId: request.headers.postid,
+        type: ACTIVITY_CONSTANTS.COMMENT_POST,
+        active: true,
+      },
+      {},
+      {},
+      { updatedAt: -1 },
+      ["userId"],
+      request.headers.pagenumber ? request.headers.pagenumber : 1,
+      request.headers.pagesize ? request.headers.pagesize : 10,
+      request.headers.limit ? request.headers.limit : 10
+    );
+    return { message: "Comments Fetched", data: post };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+};
+
 const createPost = async (request: CreatePostDto): Promise<ResponseDto> => {
   try {
     const postRef = uuidv4();
-    console.log(request.body);
-
     const postObj = {
       username: request.headers.username,
       userId: request.headers.userid,
@@ -181,8 +248,6 @@ const createPost = async (request: CreatePostDto): Promise<ResponseDto> => {
       location: request.body.location || "",
       active: true,
     };
-    console.log(postObj);
-
     const post = await db.create(PostModel, postObj, { new: true });
     return { message: "Post Created", data: post };
   } catch (error: any) {
@@ -212,8 +277,6 @@ const createComment = async (
       _id: request.body.postId,
     });
     if (post) {
-      console.log(post);
-
       const activityRef = uuidv4();
       const activity: Activity | null = await ans.trigger(
         {
@@ -263,15 +326,13 @@ const addLike = async (request: LikeDto): Promise<ResponseDto> => {
   try {
     const post: Post = await db.findOneAndUpdate(
       PostModel,
-      { _id: request.body.postId },
+      { _id: request.headers.postid },
       {
         $inc: { likeCount: 1 },
       },
       { new: true }
     );
     if (post) {
-      console.log(post);
-
       const activityRef = uuidv4();
       const activity = await ans.trigger(
         {
@@ -335,7 +396,6 @@ const deleteComment = async (
       { new: true },
       ["postId"]
     );
-    console.log(updatedActivity);
 
     if (updatedActivity) {
       const activity: Activity | null = await ans.trigger(
@@ -374,6 +434,7 @@ const deleteLike = async (request: LikeDto): Promise<ResponseDto> => {
       { $set: { active: false } },
       { new: true }
     );
+
     const post: Post = await db.findOneAndUpdate(
       PostModel,
       { _id: updatedActivity.postId },
@@ -419,6 +480,33 @@ router.get(
   }
 );
 
+router.get(
+  "/id",
+  [userMiddleware.loginStatus],
+  async (request: GetPostByIdDto, response: any) => {
+    const user: ResponseDto = await getPostById(request);
+    response.send(user);
+  }
+);
+
+router.get(
+  "/checkLike",
+  [userMiddleware.loginStatus],
+  async (request: CheckIfLikedDto, response: any) => {
+    const user: ResponseDto = await checkIfLiked(request);
+    response.send(user);
+  }
+);
+
+router.get(
+  "/comment",
+  [userMiddleware.loginStatus],
+  async (request: GetPostByIdDto, response: any) => {
+    const comments: ResponseDto = await getAllComments(request);
+    response.send(comments);
+  }
+);
+
 router.post(
   "/",
   [userMiddleware.loginStatus],
@@ -450,8 +538,8 @@ router.post(
   "/like/",
   [userMiddleware.loginStatus],
   async (request: LikeDto, response: any) => {
-    const newComment: ResponseDto = await addLike(request);
-    response.send(newComment);
+    const like: ResponseDto = await addLike(request);
+    response.send(like);
   }
 );
 
