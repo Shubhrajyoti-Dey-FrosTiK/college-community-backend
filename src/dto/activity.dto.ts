@@ -6,6 +6,7 @@ export interface ActivityDto {
   activityRef: string;
   postId: Types.ObjectId;
   userId: Types.ObjectId;
+  creatorId: Types.ObjectId;
   username: string;
   postRef: string;
   creatorImage?: string;

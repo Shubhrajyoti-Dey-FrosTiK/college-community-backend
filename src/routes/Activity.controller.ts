@@ -5,6 +5,8 @@ import { ResponseDto } from "../dto/response.dto";
 
 /*-------- Model --------*/
 import { UserModel, User } from "../models/User.model";
+import { ActivityModel } from "../models/Activity.model";
+import { Types } from "mongoose";
 
 /*-------- Middleware --------*/
 import { UserMiddleware } from "../middleware/User";
@@ -13,6 +15,7 @@ import { UserMiddleware } from "../middleware/User";
 import { DatabaseService } from "../services/database/database.service";
 import { EncryptionService } from "../services/encryption/encryption.service";
 import { AuthenticationService } from "../services/auth/authentication.service";
+import { ACTIVITY_CONSTANTS } from "../constants/Activity";
 
 /*-------- Initialization--------*/
 const router = express.Router();
@@ -23,126 +26,63 @@ const userMiddleware = new UserMiddleware();
 
 /*-------- Dto --------*/
 
-interface GetUserDto {
+interface GetActivityByIdDto {
   headers: {
-    username: string;
-  };
-}
-
-interface CreateUserDto {
-  body: {
-    name: string;
-    username: string;
-    email: string;
-    password: string;
-    activity?: string;
-    image?: string;
-    followers?: string;
-    following?: string;
-    expiresIn?: string | number;
-  };
-}
-
-interface LoginDto {
-  body: {
-    username: string;
-    password: string;
-    expiresIn?: string | number;
+    userid: Types.ObjectId;
   };
 }
 
 /*-------- Methods --------*/
 
-const getUser = async (request: GetUserDto): Promise<ResponseDto> => {
+const getAllActivitiesById = async (
+  request: GetActivityByIdDto
+): Promise<ResponseDto> => {
   try {
-    const user: User = await db.findOne(
-      UserModel,
-      { username: request.headers.username },
-      { password: 0 }
+    const activityList = await db.findAll(
+      ActivityModel,
+      {
+        userid: request.headers.userid,
+      },
+      {},
+      {},
+      { updatedAt: -1 },
+      ["postId"]
     );
-    return { data: user };
-  } catch (error: any) {
-    return { error: error.message };
-  }
-};
-
-const createUser = async (request: CreateUserDto): Promise<ResponseDto> => {
-  try {
-    const existingUser: User = await db.findOne(UserModel, {
-      username: request.body.username,
-    });
-    if (existingUser) {
-      return { message: "Username already exists" };
-    } else {
-      const userObject = {
-        name: request.body.name,
-        username: request.body.username,
-        email: request.body.email,
-        password: await es.hash(request.body.password),
-        activity: [],
-        followers: [],
-        following: [],
-      };
-      const token = await auth.generateToken({
-        username: request.body.username,
-        expiresIn: request.body.expiresIn || "1d",
-      });
-      const user = await db.create(UserModel, userObject, {
-        password: 0,
-      });
-      return { message: "User Created", data: user, token };
-    }
+    return { message: "Activity Retrieved successfully", data: activityList };
   } catch (error: any) {
     return { error };
   }
 };
 
-const updateUser = async (request: CreateUserDto): Promise<ResponseDto> => {
+const getAllNotificationsById = async (
+  request: GetActivityByIdDto
+): Promise<ResponseDto> => {
   try {
-    const user: User = await db.findOneAndUpdate(
-      UserModel,
-      { username: request.body.username },
-      request.body,
-      { new: true }
+    const activityList = await db.findAll(
+      ActivityModel,
+      {
+        $and: [
+          { creatorId: request.headers.userid },
+          { userId: { $ne: request.headers.userid } },
+          {
+            type: {
+              $in: [
+                ACTIVITY_CONSTANTS.FOLLOW_USER,
+                ACTIVITY_CONSTANTS.LIKE_POST,
+                ACTIVITY_CONSTANTS.COMMENT_POST,
+              ],
+            },
+          },
+        ],
+      },
+      {},
+      {},
+      { updatedAt: -1 },
+      ["postId", "userId"]
     );
-    return { message: "User Credentials updated", data: user };
+    return { message: "Activity Retrieved successfully", data: activityList };
   } catch (error: any) {
-    return { error: error.message };
-  }
-};
-
-const deleteUser = async (request: GetUserDto): Promise<ResponseDto> => {
-  try {
-    await db.deleteOne(UserModel, {
-      username: request.headers.username,
-    });
-    return { message: "User Deleted" };
-  } catch (error: any) {
-    return { error: error.message };
-  }
-};
-
-const login = async (request: LoginDto): Promise<ResponseDto> => {
-  try {
-    const user: User = await db.findOne(UserModel, {
-      username: request.body.username,
-    });
-    if (user) {
-      const isValid = await es.compare(request.body.password, user.password);
-      if (isValid) {
-        const token = await auth.generateToken({
-          username: request.body.username,
-          expiresIn: request.body.expiresIn || "1d",
-        });
-        return { message: "User Logged In", data: user, token };
-      } else {
-        return { message: "Invalid Credentials" };
-      }
-    } else {
-      return { message: "User Not Found" };
-    }
-  } catch (error: any) {
-    return { error: error.message };
+    return { error };
   }
 };
 
@@ -151,38 +91,19 @@ const login = async (request: LoginDto): Promise<ResponseDto> => {
 router.get(
   "/",
   [userMiddleware.loginStatus],
-  async (request: GetUserDto, response: any) => {
-    const user: ResponseDto = await getUser(request);
-    response.send(user);
+  async (request: GetActivityByIdDto, response: any) => {
+    const activityList: ResponseDto = await getAllActivitiesById(request);
+    response.send(activityList);
   }
 );
 
-router.post("/", async (request: CreateUserDto, response: any) => {
-  const newUser: ResponseDto = await createUser(request);
-  response.send(newUser);
-});
-
-router.put(
-  "/",
+router.get(
+  "/notifications",
   [userMiddleware.loginStatus],
-  async (request: CreateUserDto, response: any) => {
-    const updatedUser: ResponseDto = await updateUser(request);
-    response.send(updatedUser);
+  async (request: GetActivityByIdDto, response: any) => {
+    const activityList: ResponseDto = await getAllNotificationsById(request);
+    response.send(activityList);
   }
 );
-
-router.delete(
-  "/",
-  [userMiddleware.loginStatus],
-  async (request: GetUserDto, response: any) => {
-    const res: ResponseDto = await deleteUser(request);
-    response.send(res);
-  }
-);
-
-router.post("/login", async (request: LoginDto, response: any) => {
-  const loginStatus: ResponseDto = await login(request);
-  response.send(loginStatus);
-});
 
 export default router;
