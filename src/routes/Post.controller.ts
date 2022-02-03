@@ -249,6 +249,22 @@ const createPost = async (request: CreatePostDto): Promise<ResponseDto> => {
       active: true,
     };
     const post = await db.create(PostModel, postObj, { new: true });
+    const activityRef = uuidv4();
+    await db.create(ActivityModel, {
+      activityRef,
+      userId: request.headers.userid,
+      username: request.headers.username,
+      postId: post._id,
+      postRef: postRef,
+      creatorId: postObj.userId,
+      type: ACTIVITY_CONSTANTS.CREATE_POST,
+      createImage: request.body.image
+        ? request.body.image.length > 0
+          ? request.body.image
+          : ""
+        : "",
+      active: true,
+    });
     return { message: "Post Created", data: post };
   } catch (error: any) {
     return { error: error.message };
@@ -281,6 +297,7 @@ const createComment = async (
       const activity: Activity | null = await ans.trigger(
         {
           activityRef,
+          creatorId: post.userId,
           type: ACTIVITY_CONSTANTS.COMMENT_POST,
           message: request.body.message,
           postId: post._id,
@@ -337,6 +354,7 @@ const addLike = async (request: LikeDto): Promise<ResponseDto> => {
       const activity = await ans.trigger(
         {
           activityRef,
+          creatorId: post.userId,
           postId: post._id,
           postRef: post.postRef,
           username: request.headers.username,
@@ -400,6 +418,7 @@ const deleteComment = async (
     if (updatedActivity) {
       const activity: Activity | null = await ans.trigger(
         {
+          creatorId: updatedActivity.postId.userId,
           activityRef: updatedActivity.activityRef,
           type: ACTIVITY_CONSTANTS.REMOVE_COMMENT_POST,
           message: request.body.message,
@@ -452,6 +471,7 @@ const deleteLike = async (request: LikeDto): Promise<ResponseDto> => {
           postRef: post.postRef,
           username: request.headers.username,
           userId: request.headers.userid,
+          creatorId: post.userId,
         },
         post.userId,
         false

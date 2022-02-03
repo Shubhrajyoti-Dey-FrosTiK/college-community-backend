@@ -12,6 +12,7 @@ export interface Activity extends Document {
   activityRef: string;
   username: string;
   userId: Types.ObjectId;
+  creatorId: Types.ObjectId;
   type: ACTIVITY_CONSTANTS;
   active: boolean;
   postId: Types.ObjectId;
@@ -26,6 +27,7 @@ const schema = new Schema<Activity>(
   {
     activityRef: { type: String, required: true },
     userId: { type: Schema.Types.ObjectId, ref: "User" },
+    creatorId: { type: Schema.Types.ObjectId, ref: "User" },
     username: { type: String, required: true },
     postId: { type: Schema.Types.ObjectId, ref: "Post" },
     postRef: { type: String, required: true },
