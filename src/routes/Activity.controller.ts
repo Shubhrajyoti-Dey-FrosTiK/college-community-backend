@@ -65,7 +65,7 @@ const getAllActivitiesById = async (
     const activityList = await db.findAll(
       ActivityModel,
       {
-        userid: request.headers.userid,
+        userId: request.headers.userid,
       },
       {},
       {},
