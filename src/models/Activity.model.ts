@@ -15,8 +15,8 @@ export interface Activity extends Document {
   creatorId: Types.ObjectId;
   type: ACTIVITY_CONSTANTS;
   active: boolean;
-  postId: Types.ObjectId;
-  postRef: string;
+  postId?: Types.ObjectId;
+  postRef?: string;
   message?: string;
   creatorImage?: string;
   userImage?: string;
@@ -30,7 +30,7 @@ const schema = new Schema<Activity>(
     creatorId: { type: Schema.Types.ObjectId, ref: "User" },
     username: { type: String, required: true },
     postId: { type: Schema.Types.ObjectId, ref: "Post" },
-    postRef: { type: String, required: true },
+    postRef: { type: String, required: false },
     message: { type: String, required: false },
     active: { type: Boolean, default: true },
     creatorImage: { type: String, required: false },

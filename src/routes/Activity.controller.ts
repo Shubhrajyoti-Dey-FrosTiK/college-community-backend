@@ -1,4 +1,5 @@
 import express from "express";
+import { v4 as uuidv4 } from "uuid";
 
 /*--------- Dto ---------*/
 import { ResponseDto } from "../dto/response.dto";
@@ -32,6 +33,29 @@ interface GetActivityByIdDto {
   };
 }
 
+interface FollowUserDto {
+  headers: {
+    userid: Types.ObjectId;
+    username: string;
+  };
+  body: {
+    creatorId: Types.ObjectId;
+  };
+}
+
+interface CheckFollowDto {
+  headers: {
+    userid: Types.ObjectId;
+    creatorid: Types.ObjectId;
+  };
+}
+
+interface GetFollowingDto {
+  headers: {
+    userid: Types.ObjectId;
+  };
+}
+
 /*-------- Methods --------*/
 
 const getAllActivitiesById = async (
@@ -46,7 +70,7 @@ const getAllActivitiesById = async (
       {},
       {},
       { updatedAt: -1 },
-      ["postId"]
+      ["postId", "creatorId", "userId"]
     );
     return { message: "Activity Retrieved successfully", data: activityList };
   } catch (error: any) {
@@ -86,6 +110,96 @@ const getAllNotificationsById = async (
   }
 };
 
+const getFollowing = async (request: GetFollowingDto): Promise<ResponseDto> => {
+  try {
+    const following = await db.findAll(
+      ActivityModel,
+      {
+        userId: request.headers.userid,
+        type: ACTIVITY_CONSTANTS.FOLLOW_USER,
+        active: true,
+      },
+      {},
+      {},
+      {},
+      ["userId", "creatorId"]
+    );
+    return { message: "Following retrieved successfully", data: following };
+  } catch (error: any) {
+    return { error };
+  }
+};
+
+const followUser = async (request: FollowUserDto): Promise<ResponseDto> => {
+  try {
+    const activityRef = uuidv4();
+    const activity = await db.create(ActivityModel, {
+      activityRef,
+      creatorId: request.body.creatorId,
+      userId: request.headers.userid,
+      username: request.headers.username,
+      type: ACTIVITY_CONSTANTS.FOLLOW_USER,
+      active: true,
+    });
+    return { message: "User Followed", data: activity };
+  } catch (error: any) {
+    return { error };
+  }
+};
+
+const checkFollow = async (request: CheckFollowDto): Promise<ResponseDto> => {
+  try {
+    const follow = await db.count(ActivityModel, {
+      userId: request.headers.userid,
+      creatorId: request.headers.creatorid,
+      type: ACTIVITY_CONSTANTS.FOLLOW_USER,
+      active: true,
+    });
+    return {
+      message: "Check follow",
+      data: { follow: follow > 0 ? true : false },
+    };
+  } catch (error: any) {
+    return { error };
+  }
+};
+
+const unfollowUser = async (request: FollowUserDto): Promise<ResponseDto> => {
+  try {
+    console.log(request.headers, request.body);
+
+    const activityRef = uuidv4();
+    const activity = await db.findOneAndUpdate(
+      ActivityModel,
+      {
+        userId: request.headers.userid,
+        creatorId: request.body.creatorId,
+        type: ACTIVITY_CONSTANTS.FOLLOW_USER,
+        active: true,
+      },
+      {
+        $set: { active: false },
+      },
+      { new: true }
+    );
+    console.log(activity);
+
+    if (activity) {
+      await db.create(ActivityModel, {
+        activityRef,
+        creatorId: request.body.creatorId,
+        userId: request.headers.userid,
+        username: request.headers.username,
+        type: ACTIVITY_CONSTANTS.UNFOLLOW_USER,
+        active: true,
+      });
+    }
+    return { message: "User Unfollowed", data: activity };
+  } catch (error: any) {
+    return { error };
+  }
+};
+
 /*-------- Routes --------*/
 
 router.get(
@@ -98,10 +212,46 @@ router.get(
 );
 
 router.get(
+  "/follow",
+  [userMiddleware.loginStatus],
+  async (request: CheckFollowDto, response: any) => {
+    const follow: ResponseDto = await checkFollow(request);
+    response.send(follow);
+  }
+);
+
+router.get(
+  "/following",
+  [userMiddleware.loginStatus],
+  async (request: GetFollowingDto, response: any) => {
+    const follow: ResponseDto = await getFollowing(request);
+    response.send(follow);
+  }
+);
+
+router.get(
   "/notifications",
   [userMiddleware.loginStatus],
   async (request: GetActivityByIdDto, response: any) => {
     const activityList: ResponseDto = await getAllNotificationsById(request);
+    response.send(activityList);
+  }
+);
+
+router.post(
+  "/follow",
+  [userMiddleware.loginStatus],
+  async (request: FollowUserDto, response: any) => {
+    const activityList: ResponseDto = await followUser(request);
+    response.send(activityList);
+  }
+);
+
+router.post(
+  "/unfollow",
+  [userMiddleware.loginStatus],
+  async (request: FollowUserDto, response: any) => {
+    const activityList: ResponseDto = await unfollowUser(request);
     response.send(activityList);
   }
 );
