@@ -1,5 +1,5 @@
 import express, { Request } from "express";
-import { Schema, Types } from "mongoose";
+import { Mongoose, Schema, Types } from "mongoose";
 import { v4 as uuidv4 } from "uuid";
 
 /*--------- Dto ---------*/
@@ -30,6 +30,7 @@ const ans = new ActivityNotifierService();
 
 interface GetPostDto {
   headers: {
+    userid: Types.ObjectId;
     username?: string;
     pageNumber?: number;
     pageSize?: number;
@@ -167,6 +168,28 @@ const getPostById = async (request: GetPostByIdDto): Promise<ResponseDto> => {
       { _id: request.headers.postid },
       {},
       ["userId"]
+    );
+
+    return { message: "Post fetched", data: post };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+};
+
+const getPostsByUser = async (request: GetPostDto): Promise<ResponseDto> => {
+  try {
+    const post = await db.findAll(
+      PostModel,
+      {
+        userId: request.headers.userid,
+      },
+      {},
+      {},
+      { updatedAt: -1 },
+      ["userId"],
+      request.headers.pageNumber ? request.headers.pageNumber : 1,
+      request.headers.pageSize ? request.headers.pageSize : 10,
+      request.headers.limit ? request.headers.limit : 10
     );
     return { message: "Post fetched", data: post };
   } catch (error: any) {
@@ -467,7 +490,9 @@ const deleteLike = async (request: LikeDto): Promise<ResponseDto> => {
           activityRef: updatedActivity.activityRef,
           type: ACTIVITY_CONSTANTS.REMOVE_LIKE_POST,
           message: request.body.message,
-          postId: updatedActivity.postId._id,
+          postId: updatedActivity.postId
+            ? updatedActivity.postId._id
+            : new Types.ObjectId("dummyPostId"),
           postRef: post.postRef,
           username: request.headers.username,
           userId: request.headers.userid,
@@ -505,6 +530,15 @@ router.get(
   [userMiddleware.loginStatus],
   async (request: GetPostByIdDto, response: any) => {
     const user: ResponseDto = await getPostById(request);
+    response.send(user);
+  }
+);
+
+router.get(
+  "/user",
+  [userMiddleware.loginStatus],
+  async (request: GetPostDto, response: any) => {
+    const user: ResponseDto = await getPostsByUser(request);
     response.send(user);
   }
 );
