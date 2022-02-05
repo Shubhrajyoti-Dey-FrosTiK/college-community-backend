@@ -221,7 +221,7 @@ const getAllPosts = async (request: GetPostDto): Promise<ResponseDto> => {
       { updatedAt: -1 },
       ["userId"],
       request.headers.pageNumber ? request.headers.pageNumber : 1,
-      request.headers.pageSize ? request.headers.pageSize : 10,
+      request.headers.pageSize ? request.headers.pageSize : 100,
       request.headers.limit ? request.headers.limit : 10
     );
     return { message: "Posts fetched", data: posts };
