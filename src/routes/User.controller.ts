@@ -52,6 +52,12 @@ interface LoginDto {
   };
 }
 
+interface SearchUserDto {
+  headers: {
+    search: string;
+  };
+}
+
 /*-------- Methods --------*/
 
 const getUser = async (request: GetUserDto): Promise<ResponseDto> => {
@@ -150,6 +156,21 @@ const login = async (request: LoginDto): Promise<ResponseDto> => {
   }
 };
 
+const search = async (request: SearchUserDto): Promise<ResponseDto> => {
+  try {
+    const users: User[] = await db.findAll(
+      UserModel,
+      { $text: { $search: `${request.headers.search}` } },
+      { score: { $meta: "textScore" } },
+      {},
+      { score: { $meta: "textScore" } }
+    );
+    return { data: users };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+};
+
 /*-------- Routes --------*/
 
 router.get(
@@ -157,6 +178,15 @@ router.get(
   [userMiddleware.loginStatus],
   async (request: GetUserDto, response: any) => {
     const user: ResponseDto = await getUser(request);
+    response.send(user);
+  }
+);
+
+router.get(
+  "/search",
+  [userMiddleware.loginStatus],
+  async (request: SearchUserDto, response: any) => {
+    const user: ResponseDto = await search(request);
     response.send(user);
   }
 );

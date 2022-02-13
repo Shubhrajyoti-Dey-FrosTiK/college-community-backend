@@ -33,4 +33,5 @@ const schema = new Schema<User>(
   }
 );
 
+schema.index({ username: "text", name: "text", email: "text" });
 export const UserModel = model<User>("User", schema);
