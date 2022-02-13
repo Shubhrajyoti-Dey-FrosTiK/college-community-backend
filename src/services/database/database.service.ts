@@ -63,7 +63,7 @@ export class DatabaseService {
   async findAll<T extends Document>(
     model: Model<any>,
     inputQuery: mongoose.FilterQuery<any> = {},
-    fieldMap: IMongoRequiredFields = { _id: 0 },
+    fieldMap: mongoose.FilterQuery<any> = { _id: 0 },
     queryOptions: QueryOptions = {},
     sortOptions: object = {},
     populateOptions: Array<string> = [],
