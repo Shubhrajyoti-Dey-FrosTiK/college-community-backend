@@ -13,6 +13,7 @@ import { UserMiddleware } from "../middleware/User";
 import { DatabaseService } from "../services/database/database.service";
 import { EncryptionService } from "../services/encryption/encryption.service";
 import { AuthenticationService } from "../services/auth/authentication.service";
+import axios from "axios";
 
 /*-------- Initialization--------*/
 const router = express.Router();
@@ -55,6 +56,12 @@ interface LoginDto {
 interface SearchUserDto {
   headers: {
     search: string;
+  };
+}
+
+interface SearchCF {
+  headers: {
+    cfid: string;
   };
 }
 
@@ -171,6 +178,19 @@ const search = async (request: SearchUserDto): Promise<ResponseDto> => {
   }
 };
 
+const getCodeforcesProfile = async (
+  request: SearchCF
+): Promise<ResponseDto> => {
+  try {
+    const cf: ResponseDto = await axios.get(
+      `https://codeforces.com/api/user.status?handle=${request.headers.cfid}&from=1&count=10`
+    );
+    return { message: "User Retreived", data: cf.data };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+};
+
 /*-------- Routes --------*/
 
 router.get(
@@ -190,6 +210,11 @@ router.get(
     response.send(user);
   }
 );
+
+router.get("/cf", async (request: SearchCF, response: any) => {
+  const user: ResponseDto = await getCodeforcesProfile(request);
+  response.send(user);
+});
 
 router.post("/", async (request: CreateUserDto, response: any) => {
   const newUser: ResponseDto = await createUser(request);
