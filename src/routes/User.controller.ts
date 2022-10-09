@@ -42,6 +42,7 @@ interface CreateUserDto {
     following?: string;
     expiresIn?: string | number;
     bio?: string;
+    codeforcesUserId?: string;
   };
 }
 
@@ -104,6 +105,7 @@ const createUser = async (request: CreateUserDto): Promise<ResponseDto> => {
       notifications: [],
       post: [],
       bio: request.body.bio || "",
+      codeforcesUserId: request.body.codeforcesUserId || "",
     };
     const token = await auth.generateToken({
       username: request.body.username,

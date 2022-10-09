@@ -13,6 +13,7 @@ export interface User extends Document {
   bio?: string;
   notifications?: Array<Types.ObjectId>;
   followRequests?: Array<Types.ObjectId>;
+  codeforcesUserId?: string;
 }
 
 const schema = new Schema<User>(
@@ -27,6 +28,7 @@ const schema = new Schema<User>(
     bio: { type: String, required: false },
     followRequests: [{ type: Schema.Types.ObjectId, ref: "User" }],
     notifications: [{ type: Schema.Types.ObjectId, ref: "Activity" }],
+    codeforcesUserId: { type: String, required: false },
   },
   {
     timestamps: true,
